@@ -9,50 +9,56 @@ from f110_gym.envs.pure_pursuit_controller import nearest_point_on_trajectory
 class Rewards:
     def __init__(self, config, raceline):
         super(Rewards, self).__init__()
+
         self.conf = config
         self.params = config.params
+        self.raceline = raceline
 
-        self.ref_headings = raceline[:, 7]
+        self.s_dist = raceline[:, 1]
+        self.raceline_pts = raceline[:, 3:5]
         self.track_widths = raceline[:, 5] + raceline[:, 6]
-        self.s_dist = racelines[:, 1]
+        self.ref_headings = raceline[:, 7] 
 
-        #define parameters from config
-        self.alpha_dev = self.conf.alpha_dev
-        self.alpha_heading = self.conf.alpha_heading
-        self.tau_dev = self.conf.tau_dev
-        self.tau_heading = self.conf.tau_heading
+        self.track_length = self.s_dist[-1]
+
+        # --- 3. PARAMS & WEIGHTS ---
+        self.alpha_dev = getattr(self.conf, 'alpha_dev', 1.0)
+        self.alpha_heading = getattr(self.conf, 'alpha_heading', 1.0)
+        self.tau_dev = getattr(self.conf, 'tau_dev', 0.1)
+        self.tau_heading = getattr(self.conf, 'tau_heading', 0.1)
+        
+        self.v_max = self.params.get('v_max', 20.0)
+        self.t_sim = 0.01
+        self.max_heading = np.pi
 
         self.prev_s = None
-        self.max_heading = np.pi
-        self.v_max = self.params.get('v_max')
-        self.prev_obs = None
-
-        # Observation Variables
 
     def get_reward(self, obs):
-        self.prev_obs = obs
-        projection, dist, segment, idx = nearest_point_on_trajectory([self.x, self.y], self.raceline)
-        v_x = obs['linear_vels_x']
-        v_y = obs['linear_vels_y']
-        collision = obs['collisions']
-        x = obs['poses_x']
-        y = obs['poses_y']
-        heading = obs['poses_theta']
+        # Obtaining values from current observation.
+        v_x = obs['linear_vels_x'][0]
+        v_y = obs['linear_vels_y'][0]
+        collision = obs['collisions'][0]
+        x = obs['poses_x'][0]
+        y = obs['poses_y'][0]
+        heading = obs['poses_theta'][0]
 
-        self.s_dist = raceline[:, 0]
-        self.raceline_pts = raceline[:, 1:3]
-        self.ref_headings = raceline[:, 3]
-        self.t_sim = 0.01
+        # Calculating closest point on trajectory
+        projection, dist, segment, idx = nearest_point_on_trajectory(np.array([x, y]), self.raceline_pts)
 
+        # Calling all individual reward functions
         r_adv = self.get_advance_reward(idx)
         r_speed = self.get_speed_reward(v_x, v_y)
-        r_dev = self.get_deviation_penalty()
-        r_heading = self.get_heading_penalty()
-        r_coll = self.get_collision_penalty()
+        r_dev = self.get_deviation_penalty(dist, idx)
+        r_heading = self.get_heading_penalty(heading, idx)
+        r_coll = self.get_collision_penalty(collision)
 
-        return 0
+        # Calculating total reward
+        r_pos = r_adv + r_speed
+        r_tot = r_pos + (r_pos * (r_dev + r_heading)) + r_coll
 
+        return r_tot
 
+    # Reward for track advancement.
     def get_advance_reward(self, idx):
 
         curr_s = self.s_dist[idx]
@@ -60,7 +66,12 @@ class Rewards:
         if (self.prev_s is None):
             delta_s = 0.0
         else:
-            delta_s = current_s - self.prev_s
+            delta_s = curr_s - self.prev_s
+
+            if delta_s < -self.track_length / 2:
+                delta_s += self.track_length 
+            elif delta_s > self.track_length / 2:
+                delta_s -= self.track_length
 
         denominator = self.v_max * self.t_sim
         r_adv = delta_s / denominator
@@ -69,58 +80,40 @@ class Rewards:
         
         return r_adv 
 
+    # Reward for higher velocities.
     def get_speed_reward(self, v_x, v_y):   
-        v = np.linalg.norm(v_x, v_y)
+        v = np.sqrt(v_x**2 + v_y**2)
         return v / self.v_max
 
-    def get_collision_penalty(self):
+    # Penalty for collisions against track border.
+    def get_collision_penalty(self, collision):
         if (collision):
-            return -1
+            return -1.0
         return 0.0
 
-    def get_deviation_penalty(self):
+    # Penalty for lateral deviation from reference line.
+    def get_deviation_penalty(self, dist, idx):
     
-        curr_s = self.s_dist[nearest_idx]
+        curr_width = self.track_widths[idx]
 
-        if (self.prev_s is None):
-            self.prev_s = curr_s
-            delta_s = 0.0
-        else:
-            delta_s = current_s - self.prev_s
-
-        denominator = self.v_max * self.t_sim
-
-        r_dev = delta_s / denominator
-
-        self.prev_s = curr_s
-
-        if (r_dev > self.tau_dev): 
-            return 0.0
+        if (dist > self.tau_dev): 
+            return (-self.alpha_dev * (dist / curr_width))
         
-        return (-alpha_dev * r_dev)
+        return 0.0
 
-    def get_heading_penalty(self, idx):
+    # Penalty for deviation from optimal heading angle.
+    def get_heading_penalty(self, heading, idx):
+        diff = heading - self.ref_headings[idx]
+        diff = (diff + np.pi) % (2 * np.pi) - np.pi
+        diff = abs(diff)
 
-        diff = abs(self.heading - ref_headings)
-
-        product = diff / self.max_heading
-
-        if (product > self.tau_heading): 
-            return 0.0
+        if (diff > self.tau_heading): 
+            return (-self.alpha_heading * (diff / self.max_heading))
         
-        return (-alpha_heading * product)
+        return 0.0
 
-# debugging main function
-if __name__ == '__main__':
-    config_path = './config.yaml'
-    with open(config_path) as file:
-        conf_dict = yaml.load(file, Loader=yaml.FullLoader)
-    conf = Namespace(**conf_dict)
-    
-
-    reward = Rewards(conf, [[0,1], [0,0], [1,0], [1,1]])
-
-    print(reward.get_reward([0,1]))
+    def reset_state(self):
+        self.prev_s = None
 
 
     

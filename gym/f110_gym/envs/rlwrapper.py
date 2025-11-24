@@ -4,6 +4,7 @@ from gymnasium import spaces
 from f110_gym.envs.base_classes import Integrator
 from f110_gym.envs.pure_pursuit_controller import PurePursuitPlanner
 from f110_gym.envs.f110_env import F110Env
+from f110_gym.envs.rewards import Rewards
 
 class ResidualRLWrapper(gym.Env):
     def __init__(self, config, planner):
@@ -20,6 +21,9 @@ class ResidualRLWrapper(gym.Env):
             seed = self.conf.seed
         )
         self.env.add_render_callback(self.planner.render_waypoints)
+
+        # define rewards function
+        self.rewards = Rewards(config, self.planner.waypoints)
 
         # TODO: Update action space
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
@@ -61,12 +65,8 @@ class ResidualRLWrapper(gym.Env):
         motor_commands = np.array([[final_steer, final_speed]])
         obs, reward, terminated, truncated, info = self.env.step(motor_commands)
 
-        step_reward = final_speed * 0.05
-
-        done = (reward or truncated)
-        
-        if done and obs['collisions'][0] == 1.0:
-            step_reward = -20.0 # Crash penalty
+        # TODO: Replace rewards with file calculation
+        step_reward = self.rewards.get_reward(obs)
 
         return self.process_obs(obs), step_reward, terminated, truncated, info
 

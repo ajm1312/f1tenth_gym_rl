@@ -2,6 +2,7 @@ import time
 import os
 from f110_gym.envs.base_classes import Integrator
 from f110_gym.envs.utils import get_abs_path
+from f110_gym.envs.f110_env import F110Env
 import yaml
 import gymnasium as gym
 import numpy as np
@@ -228,7 +229,7 @@ if __name__ == '__main__':
     work = {'mass': 3.463388126201571, 'lf': 0.15597534362552312, 'tlad': 0.82461887897713965, 'vgain': 1.375}#0.90338203837889}
     
     parent_dir = get_abs_path()
-    map_config_path = os.path.join(parent_dir, 'maps/config_example_map.yaml')
+    map_config_path = os.path.join(parent_dir, 'gym/f110_gym/envs/config.yaml')
 
     with open(map_config_path) as file:
         conf_dict = yaml.load(file, Loader=yaml.FullLoader)
@@ -254,19 +255,21 @@ if __name__ == '__main__':
 
         planner.render_waypoints(env_renderer)
 
-    env = gym.make('f110_gym:f110-v0', map=conf.map_path, map_ext=conf.map_ext, num_agents=1, timestep=0.01, integrator=Integrator.RK4)
+    env = F110Env('f110_gym:f110-v0', map=conf.map_path, map_ext=conf.map_ext, num_agents=1, timestep=0.01, integrator=Integrator.RK4)
     env.add_render_callback(render_callback)
     
-    obs, step_reward, done, info = env.reset(np.array([[conf.sx, conf.sy, conf.stheta]]))
+    obs, info = env.reset(poses = np.array([[conf.sx, conf.sy, conf.stheta]]))
     env.render()
 
     laptime = 0.0
     start = time.time()
 
+    done = False
     while not done:
         speed, steer = planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], work['tlad'], work['vgain'])
-        obs, step_reward, done, info = env.step(np.array([[steer, speed]]))
+        obs, step_reward, terminated, truncated, info = env.step(np.array([[steer, speed]]))
+        done = (terminated or truncated)
         laptime += step_reward
-        env.render(mode='human_fast')
+        env.render(mode='human')
         
     print('Sim elapsed time:', laptime, 'Real elapsed time:', time.time()-start)
