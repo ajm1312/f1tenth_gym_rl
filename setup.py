@@ -22,3 +22,4 @@ setup(name='f110_gym',
       # shimmy
       # torch
       # tensorboard
+      # stable_baselines3[extra]

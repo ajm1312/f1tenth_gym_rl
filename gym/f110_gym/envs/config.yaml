@@ -43,12 +43,6 @@ budget: 1000
 # optimization method
 optim_method: 'CMA'
 
-# reward parameters
-alpha_dev: 1.0
-alpha_heading: 0.25
-tau_dev: 0.1
-tau_heading: 0.0
-
 # simulation parameters
 params:
   mu: 1.0489
@@ -70,7 +64,15 @@ params:
   width: 0.31
   length: 0.58
 
-
-
 # seed
 seed: 12345
+
+# RL Model Params 
+# timestep params
+total_timesteps: 20_000
+
+# reward parameters
+alpha_dev: 1.0
+alpha_heading: 0.25
+tau_dev: 0.1
+tau_heading: 0.0

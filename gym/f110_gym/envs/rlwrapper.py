@@ -26,6 +26,7 @@ class ResidualRLWrapper(gym.Env):
         self.rewards = Rewards(config, self.planner.waypoints)
 
         # TODO: Update action space
+        # action space consists of two different 
         self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
 
         self.max_steer_residual = 0.2
@@ -63,9 +64,13 @@ class ResidualRLWrapper(gym.Env):
         final_speed = np.clip(final_speed, 0.0, 20.0)    
 
         motor_commands = np.array([[final_steer, final_speed]])
+
         obs, reward, terminated, truncated, info = self.env.step(motor_commands)
 
-        # TODO: Replace rewards with file calculation
+        # Ending current episode if lap count reaches 5.
+        if(self.env.lap_counts[0] >= 5):
+            truncated = True
+            
         step_reward = self.rewards.get_reward(obs)
 
         return self.process_obs(obs), step_reward, terminated, truncated, info
