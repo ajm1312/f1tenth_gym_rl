@@ -1,0 +1,76 @@
+# metadata
+run_name: 'map_wide'
+# characteristic number for map
+perf_num: 6
+
+# map paths
+map_path: '/home/aj/RL/f1tenth_gym/maps/GLC_RL_test_map'
+map_ext: '.png'
+
+# saving model path
+model_path: '/home/aj/RL/f1tenth_gym/gym/f110_gym/envs/models'
+
+# starting pose for map
+sx: 0.7
+sy: 0.0
+stheta: 1.37079632679
+
+# raceline path and indices
+wpt_path: '/home/aj/RL/f1tenth_gym/maps/GLC_RL_test_map_raceline.csv'
+wpt_delim: ';'
+wpt_rowskip: 3
+wpt_xind: 1
+wpt_yind: 2
+wpt_thind: 3
+wpt_vind: 5
+
+# varied params bound
+# physical params
+mass_min: 3.0
+mass_max: 4.0
+lf_min: 0.147
+lf_max: 0.170
+# controller params
+tlad_min: 0.2
+tlad_max: 5.
+vgain_min: 0.5
+vgain_max: 1.5
+
+# computation budget (can think of it as gen_num times pop_size)
+popsize: 100
+budget: 1000
+
+# optimization method
+optim_method: 'CMA'
+
+# reward parameters
+alpha_dev: 1.0
+alpha_heading: 0.25
+tau_dev: 0.1
+tau_heading: 0.0
+
+# simulation parameters
+params:
+  mu: 1.0489
+  C_Sf: 4.718
+  C_Sr: 5.4562
+  lf: 0.15875
+  lr: 0.17145
+  h: 0.074
+  m: 3.74
+  I: 0.04712
+  s_min: -0.4189
+  s_max: 0.4189
+  sv_min: -3.2
+  sv_max: 3.2
+  v_switch: 7.319
+  a_max: 9.51
+  v_min: -5.0
+  v_max: 20.0
+  width: 0.31
+  length: 0.58
+
+
+
+# seed
+seed: 12345

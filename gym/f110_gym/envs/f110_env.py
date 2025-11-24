@@ -25,12 +25,13 @@ Author: Hongrui Zheng
 '''
 
 # gym imports
-import gym
-from gym import error, spaces, utils
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium import error, spaces, utils
+from gymnasium.utils import seeding
 
 # base classes
 from f110_gym.envs.base_classes import Simulator, Integrator
+from f110_gym.envs.utils import read_config, get_abs_path
 
 # others
 import numpy as np
@@ -92,19 +93,23 @@ class F110Env(gym.Env):
             
             lidar_dist (float, default=0): vertical distance between LiDAR and backshaft
     """
-    metadata = {'render.modes': ['human', 'human_fast']}
+    metadata = {'render.modes': ['human', 'human_fast'], 'render_fps': 30}
 
     # rendering
     renderer = None
     current_obs = None
     render_callbacks = []
 
-    def __init__(self, **kwargs):        
-        # kwargs extraction
+    parent_dir = get_abs_path()
+    config_path = os.path.join(parent_dir, 'gym/f110_gym/envs/config.yaml')
+    conf = read_config(config_path)
+
+    def __init__(self, render_mode=None, **kwargs):  
         try:
             self.seed = kwargs['seed']
         except:
-            self.seed = 12345
+            self.seed = 12345     
+        # kwargs extraction
         try:
             self.map_name = kwargs['map']
             # different default maps
@@ -123,10 +128,11 @@ class F110Env(gym.Env):
             self.map_ext = kwargs['map_ext']
         except:
             self.map_ext = '.png'
-
         try:
             self.params = kwargs['params']
+            # print(self.params)
         except:
+            # print("GOING INTO EXCEPT\n\n\n\n\n\n\n")
             self.params = {'mu': 1.0489, 'C_Sf': 4.718, 'C_Sr': 5.4562, 'lf': 0.15875, 'lr': 0.17145, 'h': 0.074, 'm': 3.74, 'I': 0.04712, 's_min': -0.4189, 's_max': 0.4189, 'sv_min': -3.2, 'sv_max': 3.2, 'v_switch': 7.319, 'a_max': 9.51, 'v_min':-5.0, 'v_max': 20.0, 'width': 0.31, 'length': 0.58}
 
         # simulation parameters
@@ -299,11 +305,12 @@ class F110Env(gym.Env):
 
         # check done
         done, toggle_list = self._check_done()
+        truncated = False
         info = {'checkpoint_done': toggle_list}
 
-        return obs, reward, done, info
+        return obs, reward, done, truncated, info
 
-    def reset(self, poses):
+    def reset(self, seed = None, poses=None):
         """
         Reset the gym environment by given poses
 
@@ -335,7 +342,7 @@ class F110Env(gym.Env):
 
         # get no input observations
         action = np.zeros((self.num_agents, 2))
-        obs, reward, done, info = self.step(action)
+        obs, reward, terminated, truncated, info = self.step(action)
 
         self.render_obs = {
             'ego_idx': obs['ego_idx'],
@@ -346,7 +353,7 @@ class F110Env(gym.Env):
             'lap_counts': obs['lap_counts']
             }
         
-        return obs, reward, done, info
+        return obs, info
 
     def update_map(self, map_path, map_ext):
         """

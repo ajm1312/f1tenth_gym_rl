@@ -12,6 +12,13 @@ setup(name='f110_gym',
                         'scipy>=1.7.3',
                         'numba>=0.55.2',
                         'pyyaml>=5.3.1',
-                        'pyglet<1.5',
                         'pyopengl']
       )
+
+      #TODO: Update required packages
+      # pip 23.3
+      # gymnasium
+      # stable-baselines3
+      # shimmy
+      # torch
+      # tensorboard
