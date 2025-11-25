@@ -16,6 +16,31 @@ cd f1tenth_gym_rl
 pip install -e .
 ```
 
+Next, the global paths must be updated in the config file
+
+First, find the global path by typing
+```bash
+pwd
+```
+then copying the resulting path. Next, navigate to the config file.
+
+```bash
+cd gym/f110_gym/envs/
+code .
+```
+
+Navigate to the config file and change the following paths:
+```bash
+map_path: '<path>/maps/GLC_pit_rbring1'
+model_path: '<path>/gym/f110_gym/envs/models'
+wpt_path: '<path>/maps/GLC_pit_rbring1_extended_raceline.csv'
+model_path: '<path>/gym/f110_gym/envs/models/'
+```
+
+To run a simple test using a configured model, run the test command
+```bash
+python3 test.py
+```
 
 
 ## Known issues
