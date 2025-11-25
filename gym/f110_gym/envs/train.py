@@ -36,16 +36,7 @@ def main():
 
     model.save(model_path)
     print("Model saved.")
-
-    print("Starting Test Run...")
-    obs, _ = env.reset()
-    done = False
-    while not done:
-        # Model predicts action
-        action, _ = model.predict(obs)
-        # Env adds action to expert planner
-        obs, reward, done, truncated, info = env.step(action)
-        env.render()
+    
 
 if __name__ == '__main__':
     main()

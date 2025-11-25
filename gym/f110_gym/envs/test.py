@@ -21,9 +21,11 @@ def main():
     env = ResidualRLWrapper(conf, planner)
 
     model_path = conf.model_path
+    model_name = conf.model_name
+
+    model_path = os.path.join(model_path, model_name)
 
     model = PPO.load(model_path, env=env)
-
 
     # --- 4. RUN TEST LOOP ---
     num_test_episodes = 5
@@ -36,29 +38,8 @@ def main():
         steps = 0
         
         while not done:
-            # Predict action using the trained model
-            # deterministic=True tells the model to pick the BEST action, not explore
+
             action, _ = model.predict(obs, deterministic=True)
-            
-            # --- DEBUG: INSPECT STEERING LOGIC ---
-            # We peek into the environment to see what the expert wants vs what RL wants
-            try:
-                raw_obs = env.env.current_obs
-                if raw_obs is not None:
-                    px = raw_obs['poses_x'][0]
-                    py = raw_obs['poses_y'][0]
-                    pt = raw_obs['poses_theta'][0]
-                    
-                    # Recalculate what the expert (Pure Pursuit) wants to do
-                    _, base_steer = planner.plan(px, py, pt, env.base_tlad, env.base_vgain)
-                    
-                    # RL Action is the residual (Correction)
-                    rl_steer_correction = action[0]
-                    
-                    print(f"Expert: {base_steer:5.2f} | RL Add: {rl_steer_correction:5.2f} | Final: {base_steer + rl_steer_correction:5.2f}")
-            except Exception as e:
-                pass # Ignore debug errors to keep sim running
-            # -------------------------------------
 
             obs, reward, terminated, truncated, info = env.step(action)
             
