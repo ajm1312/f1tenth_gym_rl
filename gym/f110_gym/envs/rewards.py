@@ -48,10 +48,10 @@ class Rewards:
         r_speed = self.get_speed_reward(v_x, v_y)
 
         r_pos = r_adv + r_speed
-        r_total = r_pos
+        r_tot = r_pos
 
         r_dev = self.get_deviation_penalty(r_pos, dist, idx)
-        r_total -= r_dev
+        r_tot -= r_dev
 
         r_heading = self.get_heading_penalty(r_pos, heading, idx)
         r_tot -= r_heading
