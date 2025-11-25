@@ -100,6 +100,14 @@ class ResidualRLWrapper(gym.Env):
         delta_heading = theta - ref_heading
         delta_heading = (delta_heading + np.pi) % (2 * np.pi) - np.pi
 
+        vec_to_car_x = x - projection[0]
+        vec_to_car_y = y - projection[1]
+
+        cross_prod = (np.cos(ref_heading) * vec_to_car_y) - (np.sin(ref_heading) * vec_to_car_x)
+        if (cross_prod < 0):
+            dist = -dist
+
+
         state_vec = np.array([dist, delta_heading, v_x, v_y, r], dtype=np.float32)
 
         traj_vec = []
