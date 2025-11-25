@@ -69,7 +69,8 @@ seed: 12345
 
 # RL Model Params 
 # timestep params
-total_timesteps: 20_000
+total_timesteps: 200_000
+lookahead_N: 20
 
 # reward parameters
 alpha_dev: 1.0

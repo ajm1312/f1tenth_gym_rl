@@ -2,15 +2,24 @@ import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
 from f110_gym.envs.base_classes import Integrator
-from f110_gym.envs.pure_pursuit_controller import PurePursuitPlanner
+from f110_gym.envs.pure_pursuit_controller import PurePursuitPlanner, nearest_point_on_trajectory
 from f110_gym.envs.f110_env import F110Env
 from f110_gym.envs.rewards import Rewards
+
 
 class ResidualRLWrapper(gym.Env):
     def __init__(self, config, planner):
         super(ResidualRLWrapper, self).__init__()
         self.conf = config
         self.planner = planner
+
+        self.waypoints = np.loadtxt(config.wpt_path, delimiter=config.wpt_delim, skiprows=config.wpt_rowskip)
+
+        self.s_dist = self.waypoints[:, 1]
+        self.waypoint_pts = self.waypoints[:, 3:5] # X, Y
+        self.right_border = self.waypoints[:, 5]
+        self.left_border = self.waypoints[:, 6]
+        self.ref_headings= self.waypoints[:, 7]
 
         self.s_max = config.params.get('s_max')
         self.s_min = config.params.get('s_min')
@@ -32,24 +41,23 @@ class ResidualRLWrapper(gym.Env):
 
         self.action_space = spaces.Box(np.array([self.s_min, self.v_min]), np.array([self.s_max, self.v_max]))
 
-        self.max_steer_residual = 0.2
-        self.max_speed_residual = 2.0
-
         self.base_tlad = 0.8246
         self.base_vgain = 1.375
 
         self.num_beams = 60
-        # TODO: Update observation space
-        self.observation_space = spaces.Box(low = 0.0, high = 30.0, shape=(self.num_beams,), dtype=np.float32)
-
+        self.N = config.params.get('lookahead_N', 20)
+        self.lookahead_step = 1
+        self.obs_size = 5 + (6 * self.N)
+        self.observation_space = spaces.Box(low = -1000, high = 1000, shape=(self.obs_size,), dtype=np.float32)
 
     def reset(self, seed=None, options=None):
         poses = np.array([[self.conf.sx, self.conf.sy, self.conf.stheta]])
         obs, info = self.env.reset(poses = poses)
+        self.rewards.reset_state()
         return self.process_obs(obs), {}
 
     def step(self, action):
-        # 1. Get Environment State
+
         obs_dict = self.env.current_obs
         pose_x = obs_dict['poses_x'][0]
         pose_y = obs_dict['poses_y'][0]
@@ -77,10 +85,57 @@ class ResidualRLWrapper(gym.Env):
 
 
     def process_obs(self, obs):
-        scan = obs['scans'][0]
-        indices = np.linspace(0, len(scan) - 1, self.num_beams, dtype=int)
-        downsampled = scan[indices]
-        return np.array(np.clip(downsampled, 0.0, 30.0), dtype=np.float32)
+        
+        x = obs['poses_x'][0]
+        y = obs['poses_y'][0]
+        theta = obs['poses_theta'][0]
+        v_x = obs['linear_vels_x'][0]
+        v_y = obs['linear_vels_y'][0]
+        r = obs['ang_vels_z'][0]
+
+        projection, dist, segment, idx = nearest_point_on_trajectory(np.array([x, y]), self.waypoint_pts)
+        
+        # Calculate Heading Error (delta_psi)
+        ref_heading = self.ref_headings[idx]
+        delta_heading = theta - ref_heading
+        delta_heading = (delta_heading + np.pi) % (2 * np.pi) - np.pi
+
+        state_vec = np.array([dist, delta_heading, v_x, v_y, r], dtype=np.float32)
+
+        traj_vec = []
+        
+        max_idx = len(self.waypoints)
+        
+        cos_t = np.cos(theta)
+        sin_t = np.sin(theta)
+
+        for i in range(self.N):
+            lookahead_idx = (idx + (i * self.lookahead_step)) % max_idx
+            
+            pt_ref = self.waypoint_pts[lookahead_idx]
+            
+            trk_psi = self.ref_headings[lookahead_idx]
+            d_right = self.right_border[lookahead_idx]
+            d_left = self.left_border[lookahead_idx]
+            
+            nx = -np.sin(trk_psi)
+            ny = np.cos(trk_psi)
+            
+            pt_left = pt_ref + np.array([nx * d_left, ny * d_left])
+            pt_right = pt_ref - np.array([nx * d_right, ny * d_right])
+            
+            for p in [pt_ref, pt_left, pt_right]:
+                dx = p[0] - x
+                dy = p[1] - y
+                local_x = dx * cos_t + dy * sin_t
+                local_y = -dx * sin_t + dy * cos_t
+                traj_vec.extend([local_x, local_y])
+
+        final_obs = np.concatenate([state_vec, np.array(traj_vec, dtype=np.float32)])
+        
+        return final_obs
+
+
 
     def render(self, mode='human'):
         self.env.render(mode)
