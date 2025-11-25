@@ -2,9 +2,9 @@ import yaml
 import os 
 import numpy as np 
 from argparse import Namespace
-from stable_baselines3 import PPO 
+from stable_baselines3 import PPO, SAC
 
-from rlwrapper import ResidualRLWrapper
+from f110_env_extension import F110Env_Ext
 from pure_pursuit_controller import PurePursuitPlanner
 
 
@@ -18,7 +18,7 @@ def main():
     conf = Namespace(**conf_dict)
 
     planner = PurePursuitPlanner(conf, wb=0.3302)
-    env = ResidualRLWrapper(conf, planner)
+    env = F110Env_Ext(conf, planner)
 
     model_path = conf.model_path
     model_name = conf.model_name

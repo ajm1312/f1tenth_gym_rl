@@ -4,7 +4,7 @@ from argparse import Namespace
 from stable_baselines3 import PPO, SAC
 
 # Import your classes
-from rlwrapper import ResidualRLWrapper
+from f110_env_extension import F110Env_Ext
 from pure_pursuit_controller import PurePursuitPlanner
 from utils import get_abs_path, read_config
 
@@ -20,7 +20,7 @@ def main():
 
     planner = PurePursuitPlanner(conf, wb=0.3302) 
 
-    env = ResidualRLWrapper(conf, planner)
+    env = F110Env_Ext(conf, planner)
 
     model = PPO("MlpPolicy", env, verbose=1, tensorboard_log="./logs/")
 

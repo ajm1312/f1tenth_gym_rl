@@ -14,7 +14,8 @@ class Rewards:
 
         self.s_dist = raceline[:, 1]
         self.raceline_pts = raceline[:, 3:5]
-        self.track_widths = raceline[:, 5] + raceline[:, 6]
+        self.d_left = raceline[:, 5]
+        self.d_right = raceline[:, 6]
         self.ref_headings = raceline[:, 7] 
 
         self.track_length = self.s_dist[-1]
@@ -42,6 +43,12 @@ class Rewards:
 
         # Calculating closest point on trajectory
         projection, dist, segment, idx = nearest_point_on_trajectory(np.array([x, y]), self.raceline_pts)
+        ref_heading = self.ref_headings[idx]
+        vec_x = x - projection[0]
+        vec_y = y - projection[1]
+        cross_prod = (np.cos(ref_heading) * vec_y) - (np.sin(ref_heading) * vec_x)
+
+        signed_dist = dist if cross_prod > 0 else -dist
 
         # Calling all individual reward functions
         r_adv = self.get_advance_reward(idx)
@@ -50,14 +57,15 @@ class Rewards:
         r_pos = r_adv + r_speed
         r_tot = r_pos
 
-        r_dev = self.get_deviation_penalty(r_pos, dist, idx)
+        r_dev = self.get_deviation_penalty(r_pos, signed_dist, idx)
         r_tot -= r_dev
 
         r_heading = self.get_heading_penalty(r_pos, heading, idx)
         r_tot -= r_heading
 
         r_coll = self.get_collision_penalty(collision)
-        r_tot -= r_coll
+        if (r_coll != 0.0):
+            r_tot = -10
 
         return r_tot
 
@@ -97,9 +105,12 @@ class Rewards:
     # Penalty for lateral deviation from reference line.
     def get_deviation_penalty(self, step_rew, dist, idx):
     
-        curr_width = self.track_widths[idx]
+        if dist >= 0:
+            half_width = self.d_left[idx]
+        else:
+            half_width = self.d_right[idx]
 
-        deviation_pct = abs(dist) / curr_width
+        deviation_pct = abs(dist) / half_width
 
         if (deviation_pct < self.tau_dev):
             deviation_pct = 0.0

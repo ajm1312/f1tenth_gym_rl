@@ -1,36 +1,22 @@
-![Python 3.8 3.9](https://github.com/f1tenth/f1tenth_gym/actions/workflows/ci.yml/badge.svg)
-![Docker](https://github.com/f1tenth/f1tenth_gym/actions/workflows/docker.yml/badge.svg)
 # The F1TENTH Gym environment
 
-This is the repository of the F1TENTH Gym environment.
-
-This project is still under heavy developement.
+This is the repository for a residual policy learner on the F1Tenth Gym environment.
 
 You can find the [documentation](https://f1tenth-gym.readthedocs.io/en/latest/) of the environment here.
 
 ## Quickstart
-We recommend installing the simulation inside a virtualenv. You can install the environment by running:
+We recommend installing the simulation inside a virtualenv. The project was tested using a conda environment.
+You can find [documentation](https://docs.conda.io/en/latest/) for conda here. 
 
 ```bash
-virtualenv gym_env
-source gym_env/bin/activate
-git clone https://github.com/f1tenth/f1tenth_gym.git
-cd f1tenth_gym
+conda create --name rl_model python=3.8
+conda activate rl_model
+git clone https://github.com/ajm1312/f1tenth_gym_rl.git
+cd f1tenth_gym_rl
 pip install -e .
 ```
 
-Then you can run a quick waypoint follow example by:
-```bash
-cd examples
-python3 waypoint_follow.py
-```
 
-A Dockerfile is also provided with support for the GUI with nvidia-docker (nvidia GPU required):
-```bash
-docker build -t f1tenth_gym_container -f Dockerfile .
-docker run --gpus all -it -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix f1tenth_gym_container
-````
-Then the same example can be ran.
 
 ## Known issues
 - Library support issues on Windows. You must use Python 3.8 as of 10-2021
