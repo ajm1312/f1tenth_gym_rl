@@ -1,8 +1,6 @@
 import os
-import yaml
 import numpy as np
 from argparse import Namespace
-from f110_gym.envs.utils import read_config
 from f110_gym.envs.pure_pursuit_controller import nearest_point_on_trajectory
 
 
@@ -48,13 +46,18 @@ class Rewards:
         # Calling all individual reward functions
         r_adv = self.get_advance_reward(idx)
         r_speed = self.get_speed_reward(v_x, v_y)
-        r_dev = self.get_deviation_penalty(dist, idx)
-        r_heading = self.get_heading_penalty(heading, idx)
-        r_coll = self.get_collision_penalty(collision)
 
-        # Calculating total reward
         r_pos = r_adv + r_speed
-        r_tot = r_pos + (r_pos * (r_dev + r_heading)) + r_coll
+        r_total = r_pos
+
+        r_dev = self.get_deviation_penalty(r_pos, dist, idx)
+        r_total -= r_dev
+
+        r_heading = self.get_heading_penalty(r_pos, heading, idx)
+        r_tot -= r_heading
+
+        r_coll = self.get_collision_penalty(collision)
+        r_tot -= r_coll
 
         return r_tot
 
@@ -88,29 +91,33 @@ class Rewards:
     # Penalty for collisions against track border.
     def get_collision_penalty(self, collision):
         if (collision):
-            return -1.0
+            return 1.0
         return 0.0
 
     # Penalty for lateral deviation from reference line.
-    def get_deviation_penalty(self, dist, idx):
+    def get_deviation_penalty(self, step_rew, dist, idx):
     
         curr_width = self.track_widths[idx]
 
-        if (dist > self.tau_dev): 
-            return (-self.alpha_dev * (dist / curr_width))
+        deviation_pct = abs(dist) / curr_width
+
+        if (deviation_pct < self.tau_dev):
+            deviation_pct = 0.0
         
-        return 0.0
+        return deviation_pct * step_rew * self.alpha_dev
 
     # Penalty for deviation from optimal heading angle.
-    def get_heading_penalty(self, heading, idx):
+    def get_heading_penalty(self, step_rew, heading, idx):
         diff = heading - self.ref_headings[idx]
         diff = (diff + np.pi) % (2 * np.pi) - np.pi
-        diff = abs(diff)
 
-        if (diff > self.tau_heading): 
-            return (-self.alpha_heading * (diff / self.max_heading))
+        heading_diff_pct = abs(diff) / self.max_heading
+
+        if (heading_diff_pct < self.tau_heading): 
+            heading_diff_pct = 0.0
         
-        return 0.0
+        return heading_diff_pct * step_rew * self.alpha_heading
+        
 
     def reset_state(self):
         self.prev_s = None

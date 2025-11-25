@@ -143,7 +143,5 @@ class ResidualRLWrapper(gym.Env):
         
         return final_obs
 
-
-
-    def render(self, mode='human'):
+    def render(self, mode='human_fast'):
         self.env.render(mode)

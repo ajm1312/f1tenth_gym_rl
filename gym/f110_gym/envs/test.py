@@ -27,7 +27,6 @@ def main():
 
     model = PPO.load(model_path, env=env)
 
-    # --- 4. RUN TEST LOOP ---
     num_test_episodes = 5
     
     for episode in range(num_test_episodes):
@@ -39,7 +38,7 @@ def main():
         
         while not done:
 
-            action, _ = model.predict(obs, deterministic=True)
+            action, states = model.predict(obs, deterministic=False)
 
             obs, reward, terminated, truncated, info = env.step(action)
             
@@ -54,7 +53,7 @@ def main():
         if terminated:
             print("Result: CRASH / FINISHED")
         elif truncated:
-            print("Result: TIME LIMIT / LAP LIMIT")
+            print("Result: LAP LIMIT")
 
 if __name__ == '__main__':
     main()
