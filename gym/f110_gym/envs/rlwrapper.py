@@ -12,6 +12,11 @@ class ResidualRLWrapper(gym.Env):
         self.conf = config
         self.planner = planner
 
+        self.s_max = config.params.get('s_max')
+        self.s_min = config.params.get('s_min')
+        self.v_max = config.params.get('v_max')
+        self.v_min = config.params.get('v_min')
+
         self.env = F110Env('f110_gym:f110-v0',
             map = self.conf.map_path,
             map_ext = self.conf.map_ext,
@@ -25,9 +30,7 @@ class ResidualRLWrapper(gym.Env):
         # define rewards function
         self.rewards = Rewards(config, self.planner.waypoints)
 
-        # TODO: Update action space
-        # action space consists of two different 
-        self.action_space = spaces.Box(low=-1.0, high=1.0, shape=(2,), dtype=np.float32)
+        self.action_space = spaces.Box(np.array([self.s_min, self.v_min]), np.array([self.s_max, self.v_max]))
 
         self.max_steer_residual = 0.2
         self.max_speed_residual = 2.0
@@ -54,14 +57,11 @@ class ResidualRLWrapper(gym.Env):
 
         base_speed, base_steer = self.planner.plan(pose_x, pose_y, pose_theta, self.base_tlad, self.base_vgain)
 
-        resid_steer = action[0] * self.max_steer_residual
-        resid_speed = action[1] * self.max_speed_residual
+        final_steer = base_steer + action[0]
+        final_speed = base_speed + action[1]
 
-        final_steer = base_steer + resid_steer
-        final_speed = base_speed + resid_speed
-
-        final_steer = np.clip(final_steer, -0.418, 0.418) 
-        final_speed = np.clip(final_speed, 0.0, 20.0)    
+        final_steer = np.clip(final_steer, self.s_min, self.s_max) 
+        final_speed = np.clip(final_speed, 0.0, self.v_max)    
 
         motor_commands = np.array([[final_steer, final_speed]])
 
@@ -70,7 +70,7 @@ class ResidualRLWrapper(gym.Env):
         # Ending current episode if lap count reaches 5.
         if(self.env.lap_counts[0] >= 5):
             truncated = True
-            
+
         step_reward = self.rewards.get_reward(obs)
 
         return self.process_obs(obs), step_reward, terminated, truncated, info
