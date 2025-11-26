@@ -26,6 +26,9 @@ class F110Env_Ext(gym.Env):
         self.v_max = config.params.get('v_max')
         self.v_min = config.params.get('v_min')
 
+        self.alpha_v = 1.2
+        self.d_la = 0.6
+
         self.env = F110Env('f110_gym:f110-v0',
             map = self.conf.map_path,
             map_ext = self.conf.map_ext,
@@ -41,8 +44,8 @@ class F110Env_Ext(gym.Env):
 
         self.action_space = spaces.Box(np.array([self.s_min, self.v_min]), np.array([self.s_max, self.v_max]))
 
-        self.base_tlad = 0.8246
-        self.base_vgain = 1.375
+        self.base_tlad = 0.6
+        self.base_vgain = 1.2
 
         self.num_beams = 60
         self.N = config.params.get('lookahead_N', 20)

@@ -226,7 +226,7 @@ if __name__ == '__main__':
     main entry point
     """
 
-    work = {'mass': 3.463388126201571, 'lf': 0.15597534362552312, 'tlad': 0.82461887897713965, 'vgain': 1.375}#0.90338203837889}
+    work = {'mass': 3.463388126201571, 'lf': 0.15597534362552312, 'tlad': 0.6, 'vgain': 1.2}#0.90338203837889}
     
     parent_dir = get_abs_path()
     map_config_path = os.path.join(parent_dir, 'gym/f110_gym/envs/config.yaml')

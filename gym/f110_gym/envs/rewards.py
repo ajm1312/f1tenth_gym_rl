@@ -65,7 +65,7 @@ class Rewards:
 
         r_coll = self.get_collision_penalty(collision)
         if (r_coll != 0.0):
-            r_tot = -10
+            r_tot = -100.0
 
         return r_tot
 
