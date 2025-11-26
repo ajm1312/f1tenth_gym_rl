@@ -23,7 +23,7 @@ class Rewards:
         # --- 3. PARAMS & WEIGHTS ---
         self.alpha_dev = getattr(self.conf, 'alpha_dev', 1.0)
         self.alpha_heading = getattr(self.conf, 'alpha_heading', 0.25)
-        self.tau_dev = getattr(self.conf, 'tau_dev', 0.25)
+        self.tau_dev = getattr(self.conf, 'tau_dev', 0.1)
         self.tau_heading = getattr(self.conf, 'tau_heading', 0.0)
         
         self.v_max = self.params.get('v_max', 20.0)
