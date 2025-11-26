@@ -80,5 +80,5 @@ tau_heading: 0.0
 
 # saved model path
 model_path: '/home/aj/RL/f1tenth_gym_rl/gym/f110_gym/envs/models/'
-model_name: 'saved_model_PPO'
+model_name: 'saved_model_PPO_5'
 

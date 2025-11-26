@@ -29,6 +29,8 @@ class F110Env_Ext(gym.Env):
         self.alpha_v = 1.2
         self.d_la = 0.6
 
+        self.alpha_rl = 0.55
+
         self.env = F110Env('f110_gym:f110-v0',
             map = self.conf.map_path,
             map_ext = self.conf.map_ext,
@@ -68,8 +70,11 @@ class F110Env_Ext(gym.Env):
 
         base_speed, base_steer = self.planner.plan(pose_x, pose_y, pose_theta, self.base_tlad, self.base_vgain)
 
-        final_steer = base_steer + action[0]
-        final_speed = base_speed + action[1]
+        rl_steer = action[0] * self.alpha_rl
+        rl_speed = action[1] * self.alpha_rl
+
+        final_steer = base_steer + rl_steer
+        final_speed = base_speed + rl_speed
 
         final_steer = np.clip(final_steer, self.s_min, self.s_max) 
         final_speed = np.clip(final_speed, self.v_min, self.v_max)    
@@ -79,7 +84,7 @@ class F110Env_Ext(gym.Env):
         obs, reward, terminated, truncated, info = self.env.step(motor_commands)
 
         # Ending current episode if lap count reaches 5.
-        if(self.env.lap_counts[0] >= 5):
+        if(self.env.lap_counts[0] >= 2):
             truncated = True
 
         step_reward = self.rewards.get_reward(obs)
