@@ -150,5 +150,5 @@ class F110Env_Ext(gym.Env):
         
         return final_obs
 
-    def render(self, mode='human_fast'):
+    def render(self, mode='human'):
         self.env.render(mode)
