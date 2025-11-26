@@ -72,7 +72,7 @@ class F110Env_Ext(gym.Env):
         final_speed = base_speed + action[1]
 
         final_steer = np.clip(final_steer, self.s_min, self.s_max) 
-        final_speed = np.clip(final_speed, 0.0, self.v_max)    
+        final_speed = np.clip(final_speed, self.v_min, self.v_max)    
 
         motor_commands = np.array([[final_steer, final_speed]])
 
@@ -145,5 +145,5 @@ class F110Env_Ext(gym.Env):
         
         return final_obs
 
-    def render(self, mode='human_fast'):
+    def render(self, mode='human'):
         self.env.render(mode)
