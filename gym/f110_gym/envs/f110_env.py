@@ -243,9 +243,13 @@ class F110Env(gym.Env):
             elif not closes[i] and self.near_starts[i]:
                 self.near_starts[i] = False
                 self.toggle_list[i] += 1
-            self.lap_counts[i] = self.toggle_list[i] // 2
-            if self.toggle_list[i] < 4:
-                self.lap_times[i] = self.current_time
+            
+            current_lap_count = self.toggle_list[i] // 2
+            if (current_lap_count > self.lap_counts[i]):
+                self.lap_t0[i] = self.current_time
+                self.lap_counts[i] = current_lap_count
+
+            self.lap_times[i] = self.current_time - self.lap_t0[i]
         
         done = (self.collisions[self.ego_idx]) or np.all(self.toggle_list >= 1000)
         
@@ -339,6 +343,8 @@ class F110Env(gym.Env):
 
         # call reset to simulator
         self.sim.reset(poses)
+
+        self.lap_t0 = np.zeros((self.num_agents, ))
 
         # get no input observations
         action = np.zeros((self.num_agents, 2))

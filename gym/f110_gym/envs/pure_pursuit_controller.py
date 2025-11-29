@@ -1,16 +1,17 @@
 import time
 import os
+import yaml
+import numpy as np
+import matplotlib.pyplot as plt
+from PIL import Image
+from argparse import Namespace
+from numba import njit
+from pyglet.gl import GL_POINTS
+
+# Gym Imports
 from f110_gym.envs.base_classes import Integrator
 from f110_gym.envs.utils import get_abs_path
 from f110_gym.envs.f110_env import F110Env
-import yaml
-import gymnasium as gym
-import numpy as np
-from argparse import Namespace
-
-from numba import njit
-
-from pyglet.gl import GL_POINTS
 
 """
 Planner Helpers
@@ -147,9 +148,10 @@ def get_actuation(pose_theta, lookahead_point, position, lookahead_distance, whe
     return speed, steering_angle
 
 class PurePursuitPlanner:
-    """
-    Example Planner
-    """
+    '''
+    Pure Pursuit Control Planner
+    '''
+
     def __init__(self, conf, wb):
         self.wheelbase = wb
         self.conf = conf
@@ -168,9 +170,6 @@ class PurePursuitPlanner:
         """
         update waypoints being drawn by EnvRenderer
         """
-
-        #points = self.waypoints
-
         points = np.vstack((self.waypoints[:, self.conf.wpt_xind], self.waypoints[:, self.conf.wpt_yind])).T
         
         scaled_points = 50.*points
@@ -220,56 +219,272 @@ class PurePursuitPlanner:
         return speed, steering_angle
 
 
-# Run main function if the waypoint file is ran
-if __name__ == '__main__':
-    """
-    main entry point
-    """
+def load_map_for_plotting(conf):
+    '''
+    Loads map image for plotting.
 
-    work = {'mass': 3.463388126201571, 'lf': 0.15597534362552312, 'tlad': 0.6, 'vgain': 1.2}#0.90338203837889}
+    Parameters
+    -----------
+    conf: Namespace
+        Config file for map path.
+
+    Returns
+    -------
+    map_img: np.ndarray
+        Image of the map.
+    resolution: Float
+        Resolution of the map image.
+    origin: List[float]
+        Origin of map.
+    '''
+    map_yaml_path = conf.map_path + '.yaml'
+
+    # Opening map information from yaml file
+    with open(map_yaml_path, 'r') as f:
+        map_data = yaml.safe_load(f)
+
+    # Extracting plotting data from image file.
+    resolution = map_data['resolution']
+    origin = map_data['origin']
+    map_dir = os.path.dirname(map_yaml_path)
+    image_name = map_data.get('image', None)
+
+    # Loading image from path
+    if image_name:
+        full_image_path = os.path.join(map_dir, image_name)
+    else:
+        full_image_path = conf.map_path + conf.map_ext
+    map_img = Image.open(full_image_path).convert("L")
+    map_img = np.array(map_img)
+    return map_img, resolution, origin
+
+def plot_data(all_lap_times, trajectories, all_laps_data, map_data):
+    '''
+    Provides visual plots for velocity profile and trajectory. 
+    Displays table showing lap times for every lap during episode.
+
+    Parameters
+    ----------
+    all_lap_times: List[float]
+        All lap times from previous episodes.
+    trajectories: List[List[List[float]]]
+        All (x,y) coordinate pairs from the episodes.
+    all_laps_data: List[Dict[str, Any]]
+        All velocity information from laps during all episodes.
+    map_data: Optional[Tuple[np.ndarray, float, List[float]]]
+        Map information and image from simulation environment.
+
+
+    Returns
+    -------
+    None
+    '''
+
+    map_img, res, origin = map_data
+    map_img = np.flipud(map_img)
+
+    # Plotting trajectories from simulation.
+    plt.figure("Trajectory Map", figsize=(10, 10))
+
+    # Plotting image for trajectories.
+    if map_img is not None:
+        # Defining dimensions and plotting.
+        height, width = map_img.shape
+        left = origin[0]
+        bottom = origin[1]
+        right = left + (width * res)
+        top = bottom + (height * res)
+        plt.imshow(map_img, cmap='gray', vmin=0, vmax=255, 
+                  extent=[left, right, bottom, top], origin='lower')
+
+    colors = ['b', 'g', 'c', 'm', 'y', 'k']
+    for i, (xs, ys) in enumerate(trajectories):
+        plt.plot(xs, ys, color='r', linewidth=1, alpha=0.7)
+    plt.title("RLPP Trajectories")
+    if map_img is None: plt.axis('equal')
+
+    # Plot for velocity profile over episodes.
+    plt.figure("Velocity Profile", figsize=(12, 7))
     
-    parent_dir = get_abs_path()
-    map_config_path = os.path.join(parent_dir, 'gym/f110_gym/envs/config.yaml')
+    if all_laps_data:
+        for i, record in enumerate(all_laps_data):
+            data = record['data']
+            plt.plot(data, color='red', linewidth=1.5, alpha=0.2)
+        
+        plt.title("Velocity Profile (Darker Red = More Consistent)")
+        plt.xlabel("Steps into Lap")
+        plt.ylabel("Velocity (m/s)")
+        plt.grid(True)
+    else:
+        plt.text(0.5, 0.5, "No Laps Recorded", ha='center')
 
-    with open(map_config_path) as file:
+
+    # Displaying lap information with averages and best lap time.
+    plt.figure("Lap Time Statistics", figsize=(6, 6))
+    plt.axis('off') 
+    plt.title("Lap Time Statistics")
+
+    # Filling cells if data is present.
+    if all_lap_times:
+        mean_time = np.mean(all_lap_times)
+        table_data = []
+        for i, t in enumerate(all_lap_times):
+            diff = t - mean_time
+            table_data.append([f"Lap {i+1}", f"{t:.3f} s", f"{diff:+.3f} s"])
+        
+        table_data.append(["", "", ""]) 
+        table_data.append(["Average", f"{mean_time:.3f} s", "-"])
+        table_data.append(["Best", f"{min(all_lap_times):.3f} s", f"{min(all_lap_times)-mean_time:+.3f} s"])
+
+        the_table = plt.table(cellText=table_data, colLabels=["Lap", "Time", "Delta"],
+                              loc='center', cellLoc='center')
+        the_table.scale(1, 1.5)
+    else:
+        plt.text(0.5, 0.5, "No Laps Completed", ha='center')
+    # Displaying plots
+    plt.show()
+
+# --- 4. EVALUATION LOOP ---
+def run_pure_pursuit_eval(env, planner, work_params, num_episodes=5, max_laps=10, render=True):
+    '''
+    Running simulation and documenting information for each lap/episode.
+
+    Parameters
+    ----------
+    env: F110Env
+        F1Tenth environment instance.
+    planner: PurePursuitPlanner
+        The pure pursuit planner instance.
+    work_params: Dict[str, float]
+        Dictionary containing 'tlad' (lookahead) and 'vgain' (velocity gain).
+    num_episodes: int
+        Number of episodes to run.
+    max_laps: int
+        Maximum number of laps per episode before termination.
+    render: bool
+        Whether to visualize the simulation.
+
+    Returns:
+    all_lap_times: List[Float]
+        All lap times during episode.
+    trajectories: List[List[List[float]]]
+        All (x, y) pairs at every timestep during episode.
+    all_laps_data: [List[dict[str, ]]]
+        Velocity information for each lap during each timestep.
+    '''
+    
+    all_lap_times = []
+    trajectories = []
+    all_laps_data = [] 
+
+    tlad = work_params['tlad']
+    vgain = work_params['vgain']
+
+    for episode in range(num_episodes):
+        # Resetting environment.
+        obs, info = env.reset(poses=np.array([[conf.sx, conf.sy, conf.stheta]]))
+        done = False
+
+        # Saving positional and velocity information.
+        x_ep = []
+        y_ep = []
+        current_lap_v_buffer = []
+        
+        steps = 0
+        last_lap_time = 0.0
+        curr_lap = 0 
+        
+        print(f"--- Episode {episode + 1} ---")
+
+        # Loop for one episode.
+        while not done:
+            # Plan using Pure Pursuit.
+            speed, steer = planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], tlad, vgain)
+            
+            # Step environment with prediction from planner.
+            obs, step_reward, terminated, truncated, info = env.step(np.array([[steer, speed]]))
+            done = (terminated or truncated)
+            steps += 1
+
+            # Update car state and save position and velocity information
+            car_state = env.sim.agents[0].state 
+            x_ep.append(car_state[0])
+            y_ep.append(car_state[1])
+            current_lap_v_buffer.append(float(car_state[3]))
+
+            # Save lap time
+            sim_lap_count = env.lap_counts[0]
+            sim_time = env.current_time
+
+            # Check if maximum laps has been reached.
+            if sim_lap_count >= max_laps:
+                done = True
+
+            # End of lap detected, save values and reset current lap time.
+            if sim_lap_count > curr_lap:
+                lap_duration = sim_time - last_lap_time
+                all_lap_times.append(lap_duration)
+                
+                print(f"  Ep {episode+1} Lap {int(sim_lap_count)}: {lap_duration:.3f}s")
+                
+                lap_record = {
+                    'ep': episode + 1,
+                    'lap': int(curr_lap) + 1,
+                    'data': current_lap_v_buffer
+                }
+                all_laps_data.append(lap_record)
+
+                current_lap_v_buffer = []
+                last_lap_time = sim_time
+                curr_lap = sim_lap_count
+
+            # Optional Render
+            if (render):
+                env.render(mode='human')
+
+        # Save trajectories for end of episode.
+        trajectories.append([x_ep, y_ep])
+        print(f"Episode {episode+1} Finished.")
+
+    return all_lap_times, trajectories, all_laps_data
+
+if __name__ == '__main__':
+    '''
+    Main function to run and evaluation for standalone pure pursuit model.
+    '''
+    # Configuration.
+    work_params = {'mass': 3.463, 'lf': 0.1559, 'tlad': 0.6, 'vgain': 1.2} # 1.2 gain for speed
+    
+    # Load config.
+    parent_dir = get_abs_path()
+    config_path = './config.yaml' # Ensure this points to your file
+    
+    with open(config_path) as file:
         conf_dict = yaml.load(file, Loader=yaml.FullLoader)
     conf = Namespace(**conf_dict)
 
+    # Initialize pure pursuit and environment
     planner = PurePursuitPlanner(conf, (0.17145+0.15875))
+    env = F110Env(map=conf.map_path, map_ext=conf.map_ext, num_agents=1, timestep=0.01, integrator=Integrator.RK4)
 
+    # Get parameters from config.
+    episodes = getattr(conf, 'episode_num', 5) 
+    render = getattr(conf, 'render_sim', True)
+    max_laps = getattr(conf, 'max_laps', 10)
+
+    # Renderer Callback
     def render_callback(env_renderer):
-        # custom extra drawing function
-
         e = env_renderer
-
-        # update camera to follow car
-        x = e.cars[0].vertices[::2]
-        y = e.cars[0].vertices[1::2]
-        top, bottom, left, right = max(y), min(y), min(x), max(x)
-        e.score_label.x = left
-        e.score_label.y = top - 700
-        e.left = left - 800
-        e.right = right + 800
-        e.top = top + 800
-        e.bottom = bottom - 800
-
+        e.score_label.x = e.left + 500
+        e.score_label.y = e.top - 880
         planner.render_waypoints(env_renderer)
-
-    env = F110Env('f110_gym:f110-v0', map=conf.map_path, map_ext=conf.map_ext, num_agents=1, timestep=0.01, integrator=Integrator.RK4)
     env.add_render_callback(render_callback)
-    
-    obs, info = env.reset(poses = np.array([[conf.sx, conf.sy, conf.stheta]]))
-    env.render()
 
-    laptime = 0.0
-    start = time.time()
+    # Load Map Data for Plotting
+    map_data = load_map_for_plotting(conf)
 
-    done = False
-    while not done:
-        speed, steer = planner.plan(obs['poses_x'][0], obs['poses_y'][0], obs['poses_theta'][0], work['tlad'], work['vgain'])
-        obs, step_reward, terminated, truncated, info = env.step(np.array([[steer, speed]]))
-        done = (terminated or truncated)
-        laptime += step_reward
-        env.render(mode='human')
-        
-    print('Sim elapsed time:', laptime, 'Real elapsed time:', time.time()-start)
+    # Run Evaluation
+    all_lap_times, trajectories, all_laps_data = run_pure_pursuit_eval(env, planner, work_params, episodes, max_laps, render)
+
+    # Plot
+    plot_data(all_lap_times, trajectories, all_laps_data, map_data)

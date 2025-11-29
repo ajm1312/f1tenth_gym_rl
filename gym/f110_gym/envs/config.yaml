@@ -70,7 +70,14 @@ seed: 12345
 # RL Model Params 
 # timestep params
 total_timesteps: 2_000_000
+
+# Environment parameters
 lookahead_N: 30
+max_laps_per_episode: 10
+
+# Test parameters
+episode_num: 1
+render_sim: False
 
 # reward parameters
 alpha_dev: 1.0

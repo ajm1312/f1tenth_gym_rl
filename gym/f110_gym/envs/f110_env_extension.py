@@ -13,6 +13,8 @@ class F110Env_Ext(gym.Env):
         self.conf = config
         self.planner = planner
 
+        self.max_laps_per_ep = config.max_laps_per_episode
+
         self.waypoints = np.loadtxt(config.wpt_path, delimiter=config.wpt_delim, skiprows=config.wpt_rowskip)
 
         self.s_dist = self.waypoints[:, 1]
@@ -84,7 +86,7 @@ class F110Env_Ext(gym.Env):
         obs, reward, terminated, truncated, info = self.env.step(motor_commands)
 
         # Ending current episode if lap count reaches 5.
-        if(self.env.lap_counts[0] >= 2):
+        if(self.env.lap_counts[0] >= self.max_laps_per_ep):
             truncated = True
 
         step_reward = self.rewards.get_reward(obs)
