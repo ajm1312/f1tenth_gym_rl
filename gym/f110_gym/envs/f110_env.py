@@ -335,6 +335,10 @@ class F110Env(gym.Env):
         self.near_starts = np.array([True]*self.num_agents)
         self.toggle_list = np.zeros((self.num_agents,))
 
+        self.lap_counts = np.zeros((self.num_agents, ))
+        self.lap_times = np.zeros((self.num_agents, ))
+        self.lap_t0 = np.zeros((self.num_agents, ))
+
         # states after reset
         self.start_xs = poses[:, 0]
         self.start_ys = poses[:, 1]

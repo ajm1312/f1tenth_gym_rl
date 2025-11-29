@@ -452,8 +452,6 @@ if __name__ == '__main__':
     '''
     Main function to run and evaluation for standalone pure pursuit model.
     '''
-    # Configuration.
-    work_params = {'mass': 3.463, 'lf': 0.1559, 'tlad': 0.6, 'vgain': 1.2} # 1.2 gain for speed
     
     # Load config.
     parent_dir = get_abs_path()
@@ -462,6 +460,11 @@ if __name__ == '__main__':
     with open(config_path) as file:
         conf_dict = yaml.load(file, Loader=yaml.FullLoader)
     conf = Namespace(**conf_dict)
+
+    alpha_v = getattr(conf, 'vgain', 1.2)
+    d_la = getattr(conf, 'tlad', 0.6)
+
+    work_params = {'mass': 3.463, 'lf': 0.1559, 'tlad': d_la, 'vgain': alpha_v}
 
     # Initialize pure pursuit and environment
     planner = PurePursuitPlanner(conf, (0.17145+0.15875))

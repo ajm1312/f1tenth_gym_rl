@@ -36,6 +36,10 @@ tlad_max: 5.
 vgain_min: 0.5
 vgain_max: 1.5
 
+# lookahead and velocity multiplier
+tlad: 0.6
+vgain: 1.2
+
 # computation budget (can think of it as gen_num times pop_size)
 popsize: 100
 budget: 1000
@@ -70,6 +74,7 @@ seed: 12345
 # RL Model Params 
 # timestep params
 total_timesteps: 2_000_000
+alpha_rl: 0.55
 
 # Environment parameters
 lookahead_N: 30
