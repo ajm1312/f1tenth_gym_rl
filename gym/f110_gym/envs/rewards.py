@@ -108,21 +108,6 @@ class Rewards:
             Advancement reward calculated at timestep s.
         '''
 
-def get_advance_reward(self, idx):
-        '''
-        Calculate reward for the current timestep.
-
-        Parameters
-        ----------
-        idx: int
-            Index of closest point on raceline trajectory.
-
-        Return
-        ------
-        r_adv: float
-            Advancement reward calculated at timestep s.
-        '''
-
         # Retrieve the cumulative track distance (s-coordinate) for the current index.
         curr_s = self.s_dist[idx]
 

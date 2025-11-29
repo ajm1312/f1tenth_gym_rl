@@ -171,7 +171,11 @@ def plot_data(all_lap_times, trajectories, all_laps_data, map_data):
     map_img = np.flipud(map_img)
 
     # Plotting trajectories from simulation.
-    plt.figure("Trajectory Map", figsize=(10, 10))
+    plt.figure("RL+PP Trajectory", figsize=(10, 10))
+
+    # hiding ticks
+    plt.yticks([])
+    plt.xticks([])
 
     # Plotting image for trajectories.
     if map_img is not None:
@@ -184,21 +188,20 @@ def plot_data(all_lap_times, trajectories, all_laps_data, map_data):
         plt.imshow(map_img, cmap='gray', vmin=0, vmax=255, 
                   extent=[left, right, bottom, top], origin='lower')
 
-    colors = ['b', 'g', 'c', 'm', 'y', 'k']
     for i, (xs, ys) in enumerate(trajectories):
         plt.plot(xs, ys, color='r', linewidth=1, alpha=0.7)
     plt.title("RLPP Trajectories")
     if map_img is None: plt.axis('equal')
 
     # Plot for velocity profile over episodes.
-    plt.figure("Velocity Profile", figsize=(12, 7))
+    plt.figure("RL+PP Velocity Profile", figsize=(12, 7))
     
     if all_laps_data:
         for i, record in enumerate(all_laps_data):
             data = record['data']
             plt.plot(data, color='red', linewidth=1.5, alpha=0.2)
         
-        plt.title("Velocity Profile (Darker Red = More Consistent)")
+        plt.title("RL+PP Velocity Profile")
         plt.xlabel("Steps into Lap")
         plt.ylabel("Velocity (m/s)")
         plt.grid(True)
