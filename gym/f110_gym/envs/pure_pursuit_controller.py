@@ -303,7 +303,7 @@ def plot_data(all_lap_times, trajectories, all_laps_data, map_data):
 
     for i, (xs, ys) in enumerate(trajectories):
         plt.plot(xs, ys, color='r', linewidth=1, alpha=0.7)
-    plt.title("RLPP Trajectories")
+    plt.title("PP Trajectories")
     if map_img is None: plt.axis('equal')
 
     # Plot for velocity profile over episodes.
